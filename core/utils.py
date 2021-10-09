@@ -100,7 +100,10 @@ def translate_using_latent(nets, args, x_src, y_trg_list, z_trg_list, psi, filen
 
 @torch.no_grad()
 def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
+    #Counter so each image has separate name
+    image_count = 0 
     N, C, H, W = x_src.size()
+    #Creates the row with source images and white box
     wb = torch.ones(1, C, H, W).to(x_src.device)
     x_src_with_wb = torch.cat([wb, x_src], dim=0)
 
@@ -108,13 +111,19 @@ def translate_using_reference(nets, args, x_src, x_ref, y_ref, filename):
     s_ref = nets.style_encoder(x_ref, y_ref)
     s_ref_list = s_ref.unsqueeze(1).repeat(1, N, 1)
     x_concat = [x_src_with_wb]
+    # Creates each subsequent row of images
     for i, s_ref in enumerate(s_ref_list):
         x_fake = nets.generator(x_src, s_ref, masks=masks)
-        x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
-        x_concat += [x_fake_with_ref]
+        #Rather than concat a row, we can output each image one at a time
+        for x_fake_0 in x_fake:
+            save_image(x_fake_0,1,filename + f'.{image_count:06d}.jpg')
+            image_count+=1
+            
+        #x_fake_with_ref = torch.cat([x_ref[i:i+1], x_fake], dim=0)
+        #x_concat += [x_fake_with_ref]
 
-    x_concat = torch.cat(x_concat, dim=0)
-    save_image(x_concat, N+1, filename)
+    #x_concat = torch.cat(x_concat, dim=0)
+    #save_image(x_concat, N+1, filename)
     del x_concat
 
 
